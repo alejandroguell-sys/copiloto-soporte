@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copiloto de Soporte</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+  .header {
+    background: linear-gradient(135deg, #1e1b4b, #312e81);
+    padding: 20px 30px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid #3730a3;
+  }
+  .header .logo { font-size: 24px; }
+  .header h1 { font-size: 18px; font-weight: 700; color: #a5b4fc; }
+  .header span { font-size: 12px; color: #818cf8; }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 30px 20px; }
+
+  .card {
+    background: #1e2130;
+    border: 1px solid #2d3148;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 14px; font-weight: 600; color: #818cf8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:600px){ .grid-2 { grid-template-columns: 1fr; } }
+
+  label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; font-weight: 500; }
+  textarea, select, input {
+    width: 100%; background: #0f1117; border: 1px solid #374151;
+    border-radius: 8px; color: #e2e8f0; padding: 10px 14px;
+    font-size: 14px; font-family: inherit; transition: border-color .2s;
+    resize: vertical;
+  }
+  textarea:focus, select:focus, input:focus { outline: none; border-color: #6366f1; }
+  textarea { min-height: 120px; }
+
+  .btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white; border: none; border-radius: 8px;
+    padding: 12px 28px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity .2s; width: 100%;
+  }
+  .btn:hover { opacity: .88; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .loading {
+    display: none; text-align: center; padding: 40px;
+  }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid #374151;
+    border-top-color: #6366f1; border-radius: 50%;
+    animation: spin 1s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .results { display: none; }
+
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:600px){ .result-grid { grid-template-columns: 1fr; } }
+
+  .result-block {
+    background: #0f1117; border: 1px solid #2d3148;
+    border-radius: 10px; padding: 16px;
+  }
+  .result-block.full { grid-column: 1 / -1; }
+  .result-block .rb-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .result-block .rb-content { font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+
+  .tag {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; margin: 2px;
+  }
+  .tag-blue { background: #1e3a5f; color: #60a5fa; }
+  .tag-purple { background: #2e1065; color: #c4b5fd; }
+  .tag-green { background: #052e16; color: #4ade80; }
+  .tag-red { background: #450a0a; color: #f87171; }
+  .tag-yellow { background: #431407; color: #fb923c; }
+
+  .priority-badge {
+    display: inline-block; padding: 4px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 700;
+  }
+  .p-alta { background: #450a0a; color: #f87171; }
+  .p-media { background: #431407; color: #fb923c; }
+  .p-baja { background: #052e16; color: #4ade80; }
+
+  .action-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid #1e2130;
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-num {
+    background: #312e81; color: #a5b4fc; border-radius: 50%;
+    width: 22px; height: 22px; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+
+  .response-box {
+    background: #0a2540; border: 1px solid #1e3a5f;
+    border-radius: 8px; padding: 14px; font-size: 14px;
+    line-height: 1.7; color: #bfdbfe; white-space: pre-wrap;
+  }
+
+  .copy-btn {
+    background: #1e3a5f; color: #60a5fa; border: none;
+    border-radius: 6px; padding: 5px 12px; font-size: 12px;
+    cursor: pointer; margin-top: 10px; font-weight: 600;
+  }
+  .copy-btn:hover { background: #1e40af; }
+
+  .error-msg {
+    background: #450a0a; border: 1px solid #7f1d1d;
+    color: #f87171; border-radius: 8px; padding: 14px;
+    font-size: 14px; display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🤖</div>
+  <div>
+    <h1>Copiloto de Soporte</h1>
+    <span>Powered by Claude AI</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <h2>📋 Ingresá el caso</h2>
+    <div style="margin-bottom:16px">
+      <label>Descripción del caso *</label>
+      <textarea id="caso">El cliente Juan Pérez contacta furioso porque contrató un servicio de transporte de carga para el día de hoy a las 9am. El camión nunca apareció. Tiene mercadería perecedera que ya se está arruinando. Intentó llamar al chofer asignado y no atiende. Lleva 4 horas esperando. Dice que si no le solucionan esto en el día va a hacer una denuncia y publicar en redes sociales. Ya tuvo un problema similar hace 2 meses.</textarea>
+    </div>
+    <div class="grid-2">
+      <div>
+        <label>Canal de contacto</label>
+        <select id="canal">
+          <option value="Teléfono" selected>Teléfono</option>
+          <option value="Email">Email</option>
+          <option value="Chat en vivo">Chat en vivo</option>
+          <option value="Teléfono">Teléfono</option>
+          <option value="Redes sociales">Redes sociales</option>
+          <option value="WhatsApp">WhatsApp</option>
+          <option value="Ticket web">Ticket web</option>
+        </select>
+      </div>
+      <div>
+        <label>Tipo de cliente (opcional)</label>
+        <input id="cliente" type="text" value="Cliente recurrente — contrato activo">
+      </div>
+    </div>
+    <div style="margin-top:16px; margin-bottom:20px">
+      <label>Contexto adicional (historial, datos relevantes)</label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px">
+      <div>
+        <label>Canal de compra</label>
+        <select id="ctx_canal">
+          <option value="Punto de venta" selected>Punto de venta</option>
+          <option value="Web">Web</option>
+          <option value="App">App</option>
+          <option value="Agencia">Agencia</option>
+        </select>
+      </div>
+      <div>
+        <label>Nº de boleto</label>
+        <input id="ctx_boleto" type="text" value="@-155561818">
+      </div>
+      <div>
+        <label>Monto del boleto</label>
+        <input id="ctx_monto" type="text" placeholder="Ej: $12.500">
+      </div>
+      <div>
+        <label>Tramo</label>
+        <input id="ctx_tramo" type="text" value="Retiro → Mendoza">
+      </div>
+      <div>
+        <label>Empresa de transporte</label>
+        <input id="ctx_empresa" type="text" value="Andesmar">
+      </div>
+      <div>
+        <label>Mail del cliente</label>
+        <input id="ctx_mail" type="email" placeholder="cliente@email.com">
+      </div>
+    </div>
+    </div>
+    <button class="btn" id="analyzeBtn" onclick="analyzeCase()">⚡ Analizar caso con IA</button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p style="color:#818cf8; font-size:14px">Analizando el caso...</p>
+  </div>
+
+  <div class="results" id="results">
+    <div class="card">
+      <h2>✅ Análisis del caso</h2>
+
+      <div class="result-grid">
+
+        <div class="result-block">
+          <div class="rb-label" style="color:#a5b4fc">🏷️ Tipificación</div>
+          <div class="rb-content" id="tipificacion"></div>
+        </div>
+
+        <div class="result-block">
+          <div class="rb-label" style="color:#fb923c">🚨 Prioridad</div>
+          <div class="rb-content" id="prioridad"></div>
+        </div>
+
+        <div class="result-block full">
+          <div class="rb-label" style="color:#c4b5fd">🔖 Etiquetas</div>
+          <div class="rb-content" id="etiquetas"></div>
+        </div>
+
+        <div class="result-block full">
+          <div class="rb-label" style="color:#34d399">🧠 Interpretación</div>
+          <div class="rb-content" id="interpretacion"></div>
+        </div>
+
+        <div class="result-block full">
+          <div class="rb-label" style="color:#60a5fa">⚡ Acciones sugeridas</div>
+          <div class="rb-content" id="acciones"></div>
+        </div>
+
+        <div class="result-block full">
+          <div class="rb-label" style="color:#f59e0b">⚠️ Qué contemplar / Riesgos</div>
+          <div class="rb-content" id="contemplar"></div>
+        </div>
+
+        <div class="result-block">
+          <div class="rb-label" style="color:#e879f9">👥 Involucrar a</div>
+          <div class="rb-content" id="involucrar"></div>
+        </div>
+
+        <div class="result-block">
+          <div class="rb-label" style="color:#94a3b8">📝 Nota interna sugerida</div>
+          <div class="rb-content" id="nota"></div>
+        </div>
+
+        <div class="result-block full">
+          <div class="rb-label" style="color:#38bdf8">💬 Respuesta sugerida al cliente</div>
+          <div class="rb-content">
+            <div class="response-box" id="respuesta"></div>
+            <button class="copy-btn" onclick="copyResponse()">📋 Copiar respuesta</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const KNOWLEDGE_BASE = `
+CASO: Servicio no prestado > Micro no se presentó
+Cuándo aplica: El cliente compró un pasaje de micro y el servicio no salió o no pasó por el punto de parada indicado
+Política: La responsabilidad operativa es de la ET. Nosotros gestionamos el reclamo ante la ET. Tiempo máximo de gestión: 48hs hábiles.
+Prioridad sugerida: Alta
+Acciones: 1. Verificar en sistema si el servicio figura como operado o cancelado. 2. Identificar la ET involucrada. 3. Contactar a la ET para obtener información oficial. 4. Ofrecer reprogramación sin costo o reembolso. 5. Registrar el incidente con número de boleto y ET.
+Riesgos: Si el cliente quedó varado, priorizar solución inmediata. Si es PV corporativo, escalar a supervisor. Verificar si la ET comunicó previamente la cancelación.
+Involucrar a: Supervisor de operaciones, área de relaciones con ET
+Respuesta modelo: Hola [NOMBRE], lamentamos mucho lo sucedido con tu servicio. Ya estamos gestionando el caso con [ET] para darte una solución a la brevedad. En las próximas [X] horas te confirmamos la reprogramación o reembolso. Quedamos a disposición.
+---
+CASO: Servicio no prestado > Micro con demora excesiva
+Cuándo aplica: El servicio salió pero con demora superior a 60 minutos
+Política: Demoras son responsabilidad de la ET. Si supera 2hs podemos gestionar compensación ante la ET. Demoras menores se informan pero no generan compensación automática.
+Prioridad sugerida: Media
+Acciones: 1. Registrar hora programada vs real. 2. Consultar causa a la ET. 3. Informar al cliente. 4. Si supera 2hs, iniciar gestión de compensación ante la ET.
+Riesgos: Si la demora fue por fuerza mayor (clima, corte de ruta) no aplica compensación. Documentar todo.
+Involucrar a: Área de relaciones con ET si se gestiona compensación
+Respuesta modelo: Hola [NOMBRE], entendemos tu malestar por la demora. Consultamos con [ET] y la causa fue [CAUSA]. [Si aplica: estamos gestionando una compensación en tu nombre.] Te mantenemos informado/a.
+---
+CASO: Servicio no prestado > Vuelo cancelado o demorado
+Cuándo aplica: Cliente compró pasaje aéreo (solo PV corporativo) y el vuelo fue cancelado o demorado
+Política: Aplican políticas de la aerolínea. Solo disponible para PV corporativos. El cliente tiene derechos bajo regulación ANAC.
+Prioridad sugerida: Alta
+Acciones: 1. Verificar estado del vuelo. 2. Consultar opciones de reprogramación. 3. Informar derechos del pasajero (Res. ANAC). 4. Gestionar ante la aerolínea.
+Riesgos: Solo disponible para PV corporativos — verificar antes de gestionar. Regulación específica de ANAC aplica.
+Involucrar a: Área corporativa, aerolínea correspondiente
+Respuesta modelo: Hola [NOMBRE], estamos gestionando ante [AEROLÍNEA] para encontrar la mejor solución. Como pasajero aéreo tenés derechos establecidos por la ANAC. Te contactamos en breve con novedades.
+---
+CASO: Gestión de boleto > Solicitud de reembolso — cancelación voluntaria
+Cuándo aplica: El cliente quiere cancelar su boleto y pide devolución del dinero
+Política: Las políticas dependen de cada ET. En general: +48hs reembolso total o con penalidad mínima. -24hs: penalidad 30-50%. No-show: sin reembolso en la mayoría de los casos.
+Prioridad sugerida: Media
+Acciones: 1. Identificar la ET y consultar su política específica. 2. Calcular monto según política. 3. Informar al cliente. 4. Procesar la cancelación. 5. Confirmar acreditación.
+Riesgos: Verificar método de pago original. Si pagó en efectivo en PV físico, la devolución puede requerir presencia. Verificar si la tarifa es promocional (muchas no permiten reembolso).
+Involucrar a: No requiere escalación salvo montos elevados
+Respuesta modelo: Hola [NOMBRE], para procesar la cancelación del boleto [NÚMERO], según la política de [ET] el reembolso correspondiente es de [MONTO]. El plazo de acreditación es de [X] días hábiles. ¿Confirmás que querés proceder?
+---
+CASO: Gestión de boleto > Reprogramación de viaje
+Cuándo aplica: El cliente quiere cambiar la fecha u horario de su boleto
+Política: Condiciones de cambio dependen de la ET y tarifa. En general: cambios sin costo hasta 24hs antes. Con menos de 24hs puede haber cargo administrativo. Tarifas promo pueden no admitir cambios.
+Prioridad sugerida: Baja
+Acciones: 1. Verificar política de cambios de la ET. 2. Consultar disponibilidad en fecha/horario solicitado. 3. Informar cargos si corresponde. 4. Procesar el cambio. 5. Confirmar.
+Riesgos: Verificar que el nuevo servicio esté disponible antes de cancelar el original. Confirmar si la tarifa permite cambios.
+Involucrar a: No requiere escalación
+Respuesta modelo: Hola [NOMBRE], con gusto te ayudamos a reprogramar tu viaje. [Si aplica cargo: El cambio tiene un costo administrativo de [MONTO].] ¿Tenés alguna fecha u horario de preferencia?
+---
+CASO: Gestión de boleto > Boleto no recibido o no llegó el mail
+Cuándo aplica: El cliente compró pero no recibió la confirmación por mail o el PDF del boleto
+Política: El envío del boleto es automático al momento de la compra. Reenvío inmediato disponible.
+Prioridad sugerida: Baja
+Acciones: 1. Verificar mail registrado en la compra. 2. Confirmar que la transacción fue procesada. 3. Reenviar el boleto. 4. Si el mail estaba mal escrito, corregir y reenviar.
+Riesgos: Verificar que el pago haya sido acreditado antes de reenviar. Si hay duda sobre el pago, escalar antes de reenviar.
+Involucrar a: No requiere escalación
+Respuesta modelo: Hola [NOMBRE], vamos a reenviar tu boleto ahora mismo al mail [MAIL]. Si en unos minutos no lo recibís, revisá la carpeta de spam. Si el problema persiste, avisanos.
+---
+CASO: Gestión de boleto > Error en los datos del boleto
+Cuándo aplica: El cliente detecta un error en su nombre, DNI, fecha o destino en el boleto emitido
+Política: Errores en nombre/DNI pueden generar problemas en el abordaje y deben corregirse antes del viaje. Errores de fecha o destino se tratan como reprogramación.
+Prioridad sugerida: Media
+Acciones: 1. Identificar qué dato está incorrecto. 2. Verificar si el error fue del cliente o nuestro. 3. Gestionar corrección con la ET si es necesario. 4. Reemitir el boleto corregido. 5. Confirmar al cliente.
+Riesgos: Si el error es en nombre/DNI y el viaje es en menos de 24hs, tratar como urgente. Algunos transportes no permiten correcciones — evaluar reemisión con costo.
+Involucrar a: ET si requiere reemisión
+Respuesta modelo: Hola [NOMBRE], vamos a gestionar la corrección de tu boleto de inmediato. [Si requiere ET: Estamos coordinando con [ET] para la reemisión. Te confirmamos en breve.] Disculpá los inconvenientes.
+---
+CASO: Reclamo por experiencia > Maltrato o mala atención en PV o a bordo
+Cuándo aplica: El cliente reporta haber recibido mal trato por parte de personal de un PV o tripulación del transporte
+Política: Si es personal propio (PV): derivar a RRHH y dar respuesta formal en 48hs. Si es personal de la ET: registrar reclamo y derivar a la ET.
+Prioridad sugerida: Media
+Acciones: 1. Escuchar y registrar el reclamo con todos los detalles. 2. Identificar si el personal es propio o de la ET. 3. Derivar al área correspondiente. 4. Confirmar al cliente respuesta en 48hs.
+Riesgos: No minimizar el reclamo ni ponerse del lado del empleado frente al cliente. Si menciona discriminación o violencia, escalar a gerencia de inmediato.
+Involucrar a: RRHH o ET según corresponda, supervisor
+Respuesta modelo: Hola [NOMBRE], lamentamos mucho la experiencia que tuviste. Este tipo de situaciones no representan nuestros valores. Registramos tu reclamo y lo derivamos al área correspondiente. Te contactamos en un máximo de 48hs con novedades.
+---
+CASO: Reclamo por experiencia > Pérdida o daño de equipaje
+Cuándo aplica: El cliente reporta que su equipaje se perdió o llegó dañado
+Política: Responsabilidad de la ET. Como comercializadores facilitamos el canal de reclamo. El cliente debe presentar el reclamo dentro de las 72hs con fotos y descripción.
+Prioridad sugerida: Media
+Acciones: 1. Solicitar fotos del daño o constancia de extravío. 2. Registrar el reclamo con número de boleto y ET. 3. Derivar formalmente a la ET. 4. Informar plazo de respuesta (generalmente 10 días hábiles).
+Riesgos: Verificar si el cliente declaró el valor del equipaje al embarcar. Si contenía medicamentos o elementos urgentes, priorizar.
+Involucrar a: ET correspondiente, siniestros si el monto es elevado
+Respuesta modelo: Hola [NOMBRE], para iniciar el reclamo ante [ET] necesitamos que nos envíes fotos del daño o constancia de extravío junto con tu número de boleto. Una vez que lo tengamos, gestionamos en tu nombre. El plazo de respuesta de la empresa es de aproximadamente 10 días hábiles.
+---
+CASO: Consulta general > Estado de un reclamo previo
+Cuándo aplica: El cliente consulta sobre el estado de un reclamo que ya realizó anteriormente
+Política: Todo reclamo debe tener número de ticket asignado. El operador debe consultar el estado real en el sistema y brindar novedades precisas.
+Prioridad sugerida: Baja
+Acciones: 1. Solicitar número de ticket o datos del reclamo original. 2. Buscar en el sistema el estado actualizado. 3. Informar al cliente con precisión. 4. Si no hay novedades, dar fecha estimada de resolución.
+Riesgos: No dar información sin verificar el estado real. Evitar promesas de tiempos que no se puedan cumplir.
+Involucrar a: Área que gestiona el reclamo si hay que actualizar
+Respuesta modelo: Hola [NOMBRE], consultamos el estado de tu reclamo. Al momento, [ESTADO ACTUAL]. El próximo paso es [ACCIÓN PENDIENTE] y esperamos tener novedades para el [FECHA ESTIMADA]. Ante cualquier consulta, estamos disponibles.
+`;
+
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWLE3NmZ9DRIsj8uky3EXxodD_PkJ9JqTqyEAWr8pFzkcD3y_yFn1_sYMwGdbiWeRf/exec";
+
+async function loadKnowledgeBase() {
+  return new Promise((resolve) => {
+    const callbackName = 'kb_callback_' + Date.now();
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      console.warn('Sheet timeout, usando base embebida');
+      resolve('');
+    }, 8000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = function(rows) {
+      cleanup();
+      if (!rows || !rows.length) { resolve(''); return; }
+      let ctx = "=== BASE DE CONOCIMIENTO DE LA EMPRESA ===\n\n";
+      rows.forEach(r => {
+        ctx += `CASO: ${r.categoria} > ${r.subcategoria}\n`;
+        ctx += `Cuándo aplica: ${r.descripcion_caso}\n`;
+        ctx += `Política: ${r.politica_aplicable}\n`;
+        ctx += `Responsable: ${r.responsable_resolucion}\n`;
+        ctx += `Prioridad sugerida: ${r.prioridad_sugerida}\n`;
+        ctx += `Acciones: ${r.acciones_sugeridas}\n`;
+        ctx += `Riesgos: ${r.contemplar_riesgos}\n`;
+        ctx += `Involucrar a: ${r.involucrar_a}\n`;
+        ctx += `Tono: ${r.tono_respuesta}\n`;
+        ctx += `Respuesta modelo: ${r.respuesta_modelo}\n`;
+        ctx += `---\n`;
+      });
+      ctx += "=== FIN BASE DE CONOCIMIENTO ===";
+      resolve(ctx);
+    };
+
+    script.src = APPS_SCRIPT_URL + '?callback=' + callbackName;
+    script.onerror = () => { cleanup(); resolve(''); };
+    document.head.appendChild(script);
+  });
+}
+
+async function analyzeCase() {
+  const caso = document.getElementById('caso').value.trim();
+  if (!caso) { alert('Por favor ingresá la descripción del caso.'); return; }
+
+  const cliente = document.getElementById('cliente').value;
+  const ctx_canal = document.getElementById('ctx_canal').value;
+  const ctx_boleto = document.getElementById('ctx_boleto').value;
+  const ctx_monto = document.getElementById('ctx_monto').value;
+  const ctx_tramo = document.getElementById('ctx_tramo').value;
+  const ctx_empresa = document.getElementById('ctx_empresa').value;
+  const ctx_mail = document.getElementById('ctx_mail').value;
+
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  const kbContext = await loadKnowledgeBase();
+
+  const prompt = `Sos un experto en atención al cliente y soporte. Analizá el siguiente caso y devolvé un JSON con exactamente estas claves:
+
+{
+  "tipificacion": "Categoría > Subcategoría del caso",
+  "prioridad": "Alta | Media | Baja",
+  "etiquetas": ["tag1", "tag2", "tag3"],
+  "interpretacion": "Qué está pidiendo realmente el cliente, más allá de lo literal",
+  "acciones": ["Acción 1 concreta", "Acción 2", "Acción 3"],
+  "contemplar": "Riesgos, excepciones o políticas que el operador debe tener en cuenta",
+  "involucrar": ["Área o persona 1", "Área 2"],
+  "nota_interna": "Texto de nota interna sugerida para dejar en el sistema",
+  "respuesta_cliente": "Borrador de respuesta lista para enviar al cliente, profesional y empática"
+}
+
+CASO:
+Descripción: ${caso}
+Canal: No especificado
+Tipo de cliente: ${cliente || 'No especificado'}
+Canal de compra: ${ctx_canal}
+Nº de boleto: ${ctx_boleto || 'No especificado'}
+Monto del boleto: ${ctx_monto || 'No especificado'}
+Tramo: ${ctx_tramo || 'No especificado'}
+Empresa de transporte: ${ctx_empresa || 'No especificado'}
+Mail del cliente: ${ctx_mail || 'No especificado'}
+
+Respondé SOLO con el JSON, sin texto adicional ni backticks.`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    console.log('Respuesta API completa:', JSON.stringify(data));
+    console.log('Texto extraído:', text);
+    const clean = text.replace(/```json|```/g, '').trim();
+    // Extraer JSON aunque haya texto extra
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No se encontró JSON en la respuesta');
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    renderResults(parsed);
+    document.getElementById('results').style.display = 'block';
+  } catch(e) {
+    const errEl = document.getElementById('errorMsg');
+    errEl.textContent = 'Error: ' + (e.message || JSON.stringify(e));
+    errEl.style.display = 'block';
+    console.error('Error completo:', e);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function renderResults(d) {
+  // Tipificación
+  document.getElementById('tipificacion').innerHTML =
+    `<span class="tag tag-blue" style="font-size:14px">${d.tipificacion}</span>`;
+
+  // Prioridad
+  const pClass = d.prioridad === 'Alta' ? 'p-alta' : d.prioridad === 'Media' ? 'p-media' : 'p-baja';
+  document.getElementById('prioridad').innerHTML =
+    `<span class="priority-badge ${pClass}">${d.prioridad === 'Alta' ? '🔴' : d.prioridad === 'Media' ? '🟠' : '🟢'} ${d.prioridad}</span>`;
+
+  // Etiquetas
+  const tagColors = ['tag-purple','tag-blue','tag-green','tag-yellow','tag-red'];
+  document.getElementById('etiquetas').innerHTML =
+    d.etiquetas.map((t,i) => `<span class="tag ${tagColors[i % tagColors.length]}">${t}</span>`).join('');
+
+  // Interpretación
+  document.getElementById('interpretacion').textContent = d.interpretacion;
+
+  // Acciones
+  document.getElementById('acciones').innerHTML =
+    d.acciones.map((a,i) => `<div class="action-item"><div class="action-num">${i+1}</div><div>${a}</div></div>`).join('');
+
+  // Contemplar
+  document.getElementById('contemplar').textContent = d.contemplar;
+
+  // Involucrar
+  document.getElementById('involucrar').innerHTML =
+    d.involucrar.map(p => `<div style="padding:4px 0; border-bottom:1px solid #1e2130">👤 ${p}</div>`).join('');
+
+  // Nota interna
+  document.getElementById('nota').textContent = d.nota_interna;
+
+  // Respuesta
+  document.getElementById('respuesta').textContent = d.respuesta_cliente;
+}
+
+function copyResponse() {
+  const txt = document.getElementById('respuesta').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar respuesta', 2000);
+  });
+}
+</script>
+</body>
+</html>
